@@ -7,8 +7,7 @@ Simci is a prototype city simulation game developed during my university years a
 ### 1. Install Dependencies (macOS)
 
 ```bash
-brew install clang-format
-brew install sdl2_ttf
+brew install clang-format sdl2 sdl2_ttf
 ```
 
 ### 2. Compile the Program
