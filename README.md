@@ -1,4 +1,4 @@
-# Simci
+# Simci [![Build](https://github.com/gillarramendi/simci/actions/workflows/build.yml/badge.svg)](https://github.com/gillarramendi/simci/actions/workflows/build.yml)
 
 Simci is a prototype city simulation game developed during my university years as an experiment with C++, OpenGL, and 3D modeling.
 
