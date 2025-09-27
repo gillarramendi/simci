@@ -11,7 +11,7 @@
 //---------------------------------------------------------
 
 typedef unsigned int uint;
-typedef unsigned char byte;
+typedef unsigned char ubyte;
 
 enum LShading { sWireframe, sFlat, sGouraud, sPhong, sMetal };
 
@@ -468,8 +468,8 @@ protected:
   char ReadChar();
   // reada a floatvalue from the buffer
   float ReadFloat();
-  // reads an unsigned byte from the buffer
-  byte ReadByte();
+  // reads an unsigned ubyte from the buffer
+  ubyte ReadByte();
   // reads an asciiz string
   int ReadASCIIZ(char *buf, int max_count);
   // seek wihtin the buffer

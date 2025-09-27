@@ -1,5 +1,6 @@
 // copyright (c) 2001 Lev Povalahev
-
+// https://is.muni.cz/th/re5cm/Calligraphy/l3ds/docs/index.html
+// https://is.muni.cz/th/re5cm/Calligraphy/l3ds/?lang=en
 #include "l3ds.h"
 #include <math.h>
 #include <stdio.h>
@@ -934,9 +935,9 @@ float L3DS::ReadFloat() {
   return 0.0;
 }
 
-byte L3DS::ReadByte() {
+ubyte L3DS::ReadByte() {
   if ((m_buffer != 0) && (m_bufferSize != 0) && ((m_pos + 1) < m_bufferSize)) {
-    byte s = (byte) * (m_buffer + m_pos);
+    ubyte s = (ubyte) * (m_buffer + m_pos);
     m_pos += 1;
     return s;
   }
