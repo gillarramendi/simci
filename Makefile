@@ -23,7 +23,7 @@ ifeq ($(UNAME_S),Darwin)  # macOS
     endif
 else ifeq ($(UNAME_S),Linux)  # Ubuntu/Linux
     CXXFLAGS = -std=c++17 -Wall $(shell pkg-config --cflags sdl2 SDL2_ttf)
-    LDFLAGS  = $(shell pkg-config --libs sdl2 SDL2_ttf) -lGL
+    LDFLAGS  = $(shell pkg-config --libs sdl2 SDL2_ttf) -lGL -lGLU
 endif
 
 # Default rule
