@@ -7,8 +7,17 @@ int cam_z = 20;
 
 extern city *sim_city;
 
-// commented for now
-// L3DS scene;
+L3DS scene;
+
+float angle;
+
+float udistance;
+
+uint ticks;
+
+uint frame;
+
+float speed;
 
 void setup_opengl(int width, int height) {
   float ratio = (float)width / (float)height;
@@ -48,18 +57,48 @@ void setup_opengl(int width, int height) {
   gluPerspective(45.0, ratio, 1.0f, 1024.0f); // Same as in ReceiveObjectID
 
   //////////////////////////TESTING L3DS /////////////////////////////
+  /*
+    glMatrixMode(GL_MODELVIEW);
+    glLoadIdentity();
 
+    GLfloat glfLightAmbient[] = {0.0, 0.0, 0.0, 1.0};
+    GLfloat glfLightDiffuse[] = {0.0, 1.0, 0.0, 1.0};
+    GLfloat glfLightSpecular[] = {0.6f, 0.6f, 0.3f, 1.0f};
+
+    glLightfv(GL_LIGHT0, GL_AMBIENT, glfLightAmbient);
+    glLightfv(GL_LIGHT0, GL_DIFFUSE, glfLightDiffuse);
+    glLightfv(GL_LIGHT0, GL_SPECULAR, glfLightSpecular);
+    glEnable(GL_LIGHT0);
+
+    glClearColor(0.5, 0.5, 0.5, 0.0);
+    glColor3f(1.0, 1.0, 1.0);
+    glEnable(GL_DEPTH_TEST);
+    glEnable(GL_CULL_FACE);
+    glCullFace(GL_FRONT_AND_BACK);
+    glEnable(GL_NORMALIZE);
+    glEnable(GL_LIGHTING);
+    glColor3f(0.5, 0, 0);
+
+    glEnableClientState(GL_VERTEX_ARRAY);
+    glEnableClientState(GL_NORMAL_ARRAY);
+    glEnableClientState(GL_COLOR_ARRAY);
+  */
+
+  // glViewport(0, 0, Width, Height);
+  // glMatrixMode(GL_PROJECTION);
+  // glLoadIdentity();
+  // gluPerspective(60, (GLfloat)Width/(GLfloat)Height, 4.0, 5000.0);
   // glMatrixMode(GL_MODELVIEW);
   // glLoadIdentity();
 
-  //  GLfloat glfLightAmbient[] = {0.0, 0.0, 0.0, 1.0};
-  //  GLfloat glfLightDiffuse[] = {0.0, 1.0, 0.0, 1.0};
-  //  GLfloat glfLightSpecular[] = {0.6f, 0.6f, 0.3f, 1.0f};
+  // GLfloat glfLightAmbient[] = {0.0, 0.0, 0.0, 1.0};
+  // GLfloat glfLightDiffuse[] = {0.0, 1.0, 0.0, 1.0};
+  // GLfloat glfLightSpecular[] = {0.6f, 0.6f, 0.3f, 1.0f};
 
-  //  glLightfv(GL_LIGHT0, GL_AMBIENT, glfLightAmbient);
-  //  glLightfv(GL_LIGHT0, GL_DIFFUSE, glfLightDiffuse);
-  //  glLightfv(GL_LIGHT0, GL_SPECULAR, glfLightSpecular);
-  //  glEnable(GL_LIGHT0);
+  // glLightfv(GL_LIGHT0, GL_AMBIENT, glfLightAmbient);
+  // glLightfv(GL_LIGHT0, GL_DIFFUSE, glfLightDiffuse);
+  // glLightfv(GL_LIGHT0, GL_SPECULAR, glfLightSpecular);
+  // glEnable(GL_LIGHT0);
 
   // glClearColor(0.5, 0.5, 0.5, 0.0);
   // glColor3f(1.0, 1.0, 1.0);
@@ -67,15 +106,20 @@ void setup_opengl(int width, int height) {
   // glEnable(GL_CULL_FACE);
   // glCullFace(GL_FRONT_AND_BACK);
   // glEnable(GL_NORMALIZE);
+  // Without lighting, the house is black!
   // glEnable(GL_LIGHTING);
   // glColor3f(0.5, 0, 0);
+  // distance = -900;
+  // angle = 0;
 
   // glEnableClientState(GL_VERTEX_ARRAY);
   // glEnableClientState(GL_NORMAL_ARRAY);
   // glEnableClientState(GL_COLOR_ARRAY);
 
-  // if (!scene.LoadFile("3ds/house.3ds")) printf ("Can not load 3ds model\n");
-  // else printf ("3ds loaded correctly\n");
+  if (!scene.LoadFile("3ds/house.3ds"))
+    printf("Can not load 3ds model\n");
+  else
+    printf("3ds loaded correctly\n");
 }
 
 // Given a clicked position, returns the identification (ID) of the object
@@ -352,32 +396,48 @@ void draw_screen() {
 
   //////////////////////////TESTING L3DS /////////////////////////////
   /*
-  for (uint i= 0; i<scene.GetMeshCount(); i++)
-      {
-          LMesh &mesh = scene.GetMesh(i);
 
-          glVertexPointer(4, GL_FLOAT, 0, &mesh.GetVertex(0));
-          glNormalPointer(GL_FLOAT, 0, &mesh.GetNormal(0));
-          glColorPointer(3, GL_FLOAT, 0, &mesh.GetBinormal(0));
-          glDrawElements(GL_TRIANGLES, mesh.GetTriangleCount()*3,
-                          GL_UNSIGNED_SHORT, &mesh.GetTriangle(0));
+  // uint temp = SDL_GetTicks();
+  // frame = temp - ticks;
+  // ticks = temp;
+  // glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+  // glLoadIdentity();
+  // GLfloat glfLightPosition[] = {0.0, 0.0, 1.0, 0.0};
 
-      }
-  */
+  // glLightfv(GL_LIGHT0, GL_POSITION, glfLightPosition);
+
+  // udistance += speed * frame;
+  // glTranslatef(0, 0, udistance);
+  glRotatef(-90, 1.0, 0.0, 0.0);
+  // angle += frame * .01f;
+  // glRotatef(angle, 0.0, 1.0, 1.0);
+
+  // angle += 0.2f;
+
+  glEnableClientState(GL_VERTEX_ARRAY);
+  glEnableClientState(GL_NORMAL_ARRAY);
+  glEnableClientState(GL_COLOR_ARRAY);
+
+  for (uint i = 0; i < scene.GetMeshCount(); i++) {
+    LMesh &mesh = scene.GetMesh(i);
+
+    // Vertex colors (RGB for each vertex)
+    GLfloat colors[] = {
+        1.0f, 0.0f, 0.0f, // Red
+        0.0f, 1.0f, 0.0f, // Green
+        0.0f, 0.0f, 1.0f  // Blue
+    };
+
+    glVertexPointer(4, GL_FLOAT, 0, &mesh.GetVertex(0));
+    glNormalPointer(GL_FLOAT, 0, &mesh.GetNormal(0));
+    glColor3f(0.5, 0, 0);
+    glColorPointer(3, GL_FLOAT, 0, &mesh.GetBinormal(0));
+    // glColorPointer(3, GL_FLOAT, 0, colors);
+    glDrawElements(GL_TRIANGLES, mesh.GetTriangleCount() * 3, GL_UNSIGNED_SHORT,
+                   &mesh.GetTriangle(0));
+  }
+*/
   //////////////////////////END TESTING L3DS////////////////////////////
-
-  /*
-   * Swap the buffers. This this tells the driver to
-   * render the next frame from the contents of the
-   * back-buffer, and to set all rendering operations
-   * to occur on what was the front-buffer.
-   *
-   * Double buffering prevents nasty visual tearing
-   * from the application drawing on areas of the
-   * screen that are being updated at the same time.
-   */
-
-  // SDL_GL_SwapBuffers( );
 }
 
 // simple scene draw, only used in RetrieveObjectID

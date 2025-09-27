@@ -13,6 +13,7 @@
 #endif
 
 #include <algorithm>
+#include <iostream>
 #include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -37,8 +38,8 @@ class structure;
 #include "render.h"
 #include "structure.h"
 #include "text.h"
-// 3d model importing commented for now
-// #include "l3ds.h"
+// 3d model importing
+#include "l3ds.h"
 
 // Colors
 const GLubyte red[] = {255, 0, 0, 255};
