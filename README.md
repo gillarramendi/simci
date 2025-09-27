@@ -10,6 +10,13 @@ Simci is a prototype city simulation game developed during my university years a
 brew install clang-format sdl2 sdl2_ttf
 ```
 
+### 1. Install Dependencies (Linux)
+
+```bash
+sudo apt-get update
+sudo apt-get install build-essential clang-format libsdl2-dev libsdl2-ttf-dev libglu1-mesa-dev
+```
+
 ### 2. Compile the Program
 
 From the project root directory:
