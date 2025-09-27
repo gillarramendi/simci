@@ -82,6 +82,7 @@ int cell_coords(int x, int y, int *coordx, int *coordy) {
 }
 
 void handle_key_down(SDL_Keysym *keysym) {
+  cout << keysym->sym << " pressed\n" << endl;
   switch (keysym->sym) {
   case SDLK_ESCAPE:
     quit_program(0);
@@ -149,11 +150,14 @@ void handle_key_down(SDL_Keysym *keysym) {
     break;
   case SDLK_PLUS:
   case SDLK_KP_PLUS:
+  case SDL_SCANCODE_F4: // SDL bug on mac?
+    cout << "plus pressed\n" << endl;
     key_plus_pressed = true;
     cam_z++;
     break;
   case SDLK_MINUS:
   case SDLK_KP_MINUS:
+    cout << "minus pressed\n" << endl;
     key_minus_pressed = true;
     cam_z--;
     break;
@@ -181,6 +185,7 @@ void handle_key_up(SDL_Keysym *keysym) {
     break;
   case SDLK_PLUS:
   case SDLK_KP_PLUS:
+  case SDL_SCANCODE_F4:
     key_plus_pressed = false;
     break;
   case SDLK_MINUS:
@@ -498,7 +503,16 @@ int main(int argc, char *argv[]) {
     /* Draw text. */
     write_text(fps_text_1, true);
     write_text(fps_text_2, false);
-    /* Render */
+    /*
+     * Swap the buffers. This this tells the driver to
+     * render the next frame from the contents of the
+     * back-buffer, and to set all rendering operations
+     * to occur on what was the front-buffer.
+     *
+     * Double buffering prevents nasty visual tearing
+     * from the application drawing on areas of the
+     * screen that are being updated at the same time.
+     */
     SDL_GL_SwapWindow(window);
     /* Wait until next update */
     SDL_Delay(SECOND / 50);
