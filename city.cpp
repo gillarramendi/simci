@@ -128,6 +128,15 @@ void city::create_building(int x, int y) {
   map[x][y].building = str;
 }
 
+void city::toggle_building(int x, int y) {
+  if (map[x][y].building != nullptr) {
+    delete map[x][y].building;
+    map[x][y].building = nullptr;
+  } else {
+    map[x][y].building = new structure();
+  }
+}
+
 void city::create_building(int start_x, int start_y, int end_x, int end_y) {
   int x1 = std::min(start_x, end_x);
   int x2 = std::max(start_x, end_x);

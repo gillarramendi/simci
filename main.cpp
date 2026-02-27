@@ -247,12 +247,8 @@ void handle_mouse_button_up(SDL_Event event) {
         sim_city->clear_color_layer();
         break;
       case BUILD:
-        // Single click → one building; drag → fill rectangle
-        if (last_mouse_click_x == coordx && last_mouse_click_y == coordy)
-          sim_city->create_building(coordx, coordy);
-        else
-          sim_city->create_building(last_mouse_click_x, last_mouse_click_y,
-                                    coordx, coordy);
+        // Toggle house on the clicked cell: place if empty, remove if occupied
+        sim_city->toggle_building(coordx, coordy);
         sim_city->clear_color_layer();
         break;
       case ROAD:

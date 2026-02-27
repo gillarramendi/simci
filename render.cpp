@@ -265,81 +265,46 @@ void draw_screen() {
   }
   glEnd();
 
-  // Draw buildings as red cubes (skipped on non-flat cells)
-  const float d = 0.15f; // inset from cell edge
-  glBegin(GL_QUADS);
-  glColor4ubv(red);
-  for (i = 0; i < sim_city->xsize; i++) {
-    for (j = 0; j < sim_city->ysize; j++) {
-      if (!sim_city->is_flat(i, j) || sim_city->map[i][j].building == nullptr)
-        continue;
-
-      float alt = sim_city->map[i][j].height;
-
-      glVertex3f(i + d, alt, j + d); // face 1
-      glVertex3f(i + d, alt, j + 1 - d);
-      glVertex3f(i + d, alt + 1, j + 1 - d);
-      glVertex3f(i + d, alt + 1, j + d);
-
-      glVertex3f(i + d, alt, j + 1 - d); // face 2
-      glVertex3f(i + 1 - d, alt, j + 1 - d);
-      glVertex3f(i + 1 - d, alt + 1, j + 1 - d);
-      glVertex3f(i + d, alt + 1, j + 1 - d);
-
-      glVertex3f(i + 1 - d, alt, j + 1 - d); // face 3
-      glVertex3f(i + 1 - d, alt, j + d);
-      glVertex3f(i + 1 - d, alt + 1, j + d);
-      glVertex3f(i + 1 - d, alt + 1, j + 1 - d);
-
-      glVertex3f(i + 1 - d, alt, j + d); // face 4
-      glVertex3f(i + d, alt, j + d);
-      glVertex3f(i + d, alt + 1, j + d);
-      glVertex3f(i + 1 - d, alt + 1, j + d);
-
-      glVertex3f(i + d, alt + 1, j + d); // ceiling
-      glVertex3f(i + d, alt + 1, j + 1 - d);
-      glVertex3f(i + 1 - d, alt + 1, j + 1 - d);
-      glVertex3f(i + 1 - d, alt + 1, j + d);
-    }
-  }
-  glEnd();
-
-  // L3DS setup
-
-  // Enable lighting only for the 3DS model; disable it afterwards so the
-  // terrain glColor4ubv calls work normally on the next frame.
+  // Draw one 3DS house instance for every cell that carries a HOUSE structure.
+  // Lighting is enabled once around the whole loop and restored after.
   glEnable(GL_NORMALIZE);
   glEnable(GL_LIGHTING);
-
-  // Place the model at cell (0,0): centre of that cell is (0.5, h, 0.5).
-  // Transform order (OpenGL right-to-left):
-  //   1. Shift model so its bottom-centre is at the 3DS-space origin.
-  //   2. Scale uniformly so the footprint fits exactly one cell (1×1).
-  //   3. Rotate from 3DS Z-up to OpenGL Y-up.
-  //   4. Translate to the world-space centre of cell (0,0).
-  float cell_height = sim_city->map[0][0].height;
-  glPushMatrix();
-  glTranslatef(0.5f, cell_height, 0.5f);         // 4. cell (0,0) centre
-  glRotatef(-90.0f, 1.0f, 0.0f, 0.0f);           // 3. Z-up → Y-up
-  glScalef(model_sx, model_sy, model_sz);        // 2. fill cell footprint
-  glTranslatef(-model_cx, -model_cy, -model_cz); // 1. bottom to origin
-
   glEnableClientState(GL_VERTEX_ARRAY);
   glEnableClientState(GL_NORMAL_ARRAY);
 
-  for (uint i = 0; i < scene.GetMeshCount(); i++) {
-    LMesh &mesh = scene.GetMesh(i);
-    glVertexPointer(4, GL_FLOAT, 0, &mesh.GetVertex(0));
-    glNormalPointer(GL_FLOAT, 0, &mesh.GetNormal(0));
-    glColor3f(0.6f, 0.4f, 0.2f); // base material color, shaded by GL_LIGHT0
-    glDrawElements(GL_TRIANGLES, mesh.GetTriangleCount() * 3, GL_UNSIGNED_SHORT,
-                   &mesh.GetTriangle(0));
+  for (int ci = 0; ci < sim_city->xsize; ci++) {
+    for (int cj = 0; cj < sim_city->ysize; cj++) {
+      structure *bld = sim_city->map[ci][cj].building;
+      if (bld == nullptr || bld->struct_type != HOUSE)
+        continue;
+
+      // Transform order (OpenGL right-to-left):
+      //   1. Shift model so its bottom-centre is at the 3DS-space origin.
+      //   2. Scale so the footprint fills the full 1×1 cell.
+      //   3. Rotate from 3DS Z-up to OpenGL Y-up.
+      //   4. Translate to the world-space centre of the target cell.
+      float h = sim_city->map[ci][cj].height;
+      glPushMatrix();
+      glTranslatef(ci + 0.5f, h, cj + 0.5f);         // 4. cell centre
+      glRotatef(-90.0f, 1.0f, 0.0f, 0.0f);           // 3. Z-up → Y-up
+      glScalef(model_sx, model_sy, model_sz);        // 2. fill cell
+      glTranslatef(-model_cx, -model_cy, -model_cz); // 1. centre model
+
+      for (uint m = 0; m < scene.GetMeshCount(); m++) {
+        LMesh &mesh = scene.GetMesh(m);
+        glVertexPointer(4, GL_FLOAT, 0, &mesh.GetVertex(0));
+        glNormalPointer(GL_FLOAT, 0, &mesh.GetNormal(0));
+        glColor3f(0.6f, 0.4f, 0.2f);
+        glDrawElements(GL_TRIANGLES, mesh.GetTriangleCount() * 3,
+                       GL_UNSIGNED_SHORT, &mesh.GetTriangle(0));
+      }
+
+      glPopMatrix();
+    }
   }
 
   glDisableClientState(GL_VERTEX_ARRAY);
   glDisableClientState(GL_NORMAL_ARRAY);
-  glPopMatrix();
-
   glDisable(GL_LIGHTING);
   glDisable(GL_NORMALIZE);
 }

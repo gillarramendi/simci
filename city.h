@@ -41,9 +41,11 @@ public:
   void down(int start_x, int start_y, int end_x, int end_y);
   void level(int start_x, int start_y, int end_x, int end_y, float height);
 
-  // Create structures
+  // Create / remove structures
   void create_building(int x, int y);
   void create_building(int start_x, int start_y, int end_x, int end_y);
+  // Toggle: place a HOUSE on an empty cell, or remove it if already occupied
+  void toggle_building(int x, int y);
 
   void update_color_layer_road(int start_x, int start_y, int end_x, int end_y);
   void create_road(int start_x, int start_y, int end_x, int end_y);
