@@ -330,18 +330,28 @@ void update_status() {
   // Edge-scroll: move camera when mouse is near the window border
   SDL_GetMouseState(&mouse_x, &mouse_y);
   // printf("Mouse in %d %d \n", mouse_x, mouse_y);
-  if (mouse_x < 10)              cam_x--;
-  if (mouse_x > SCREENWIDTH - 10)  cam_x++;
-  if (mouse_y < 10)              cam_y++;
-  if (mouse_y > SCREENHEIGHT - 10) cam_y--;
+  if (mouse_x < 10)
+    cam_x--;
+  if (mouse_x > SCREENWIDTH - 10)
+    cam_x++;
+  if (mouse_y < 10)
+    cam_y++;
+  if (mouse_y > SCREENHEIGHT - 10)
+    cam_y--;
 
   // Keyboard camera movement (held keys)
-  if (key_up_pressed)    cam_y++;
-  if (key_down_pressed)  cam_y--;
-  if (key_left_pressed)  cam_x--;
-  if (key_right_pressed) cam_x++;
-  if (key_plus_pressed)  cam_z++;
-  if (key_minus_pressed) cam_z--;
+  if (key_up_pressed)
+    cam_y++;
+  if (key_down_pressed)
+    cam_y--;
+  if (key_left_pressed)
+    cam_x--;
+  if (key_right_pressed)
+    cam_x++;
+  if (key_plus_pressed)
+    cam_z++;
+  if (key_minus_pressed)
+    cam_z--;
 
   // While dragging, highlight the selection rectangle with the action's color
   if (cell_coords(mouse_x, mouse_y, &coordx, &coordy) > 0 &&
@@ -415,11 +425,8 @@ int main(int argc, char *argv[]) {
 
   // 4. Create window with an OpenGL context
   SDL_Window *window =
-      SDL_CreateWindow("Simci",
-                       SDL_WINDOWPOS_CENTERED,
-                       SDL_WINDOWPOS_CENTERED,
-                       SCREENWIDTH, SCREENHEIGHT,
-                       SDL_WINDOW_OPENGL);
+      SDL_CreateWindow("Simci", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED,
+                       SCREENWIDTH, SCREENHEIGHT, SDL_WINDOW_OPENGL);
   if (!window) {
     fprintf(stderr, "Window creation failed: %s\n", SDL_GetError());
     quit_program(1);

@@ -10,13 +10,12 @@ static int nextpoweroftwo(int x) {
 
 static void SDL_GL_RenderText(char *text, TTF_Font *fnt, SDL_Color color,
                               SDL_Rect *location) {
-  SDL_Surface *initial     = TTF_RenderText_Blended(fnt, text, color);
-  int          w           = nextpoweroftwo(initial->w);
-  int          h           = nextpoweroftwo(initial->h);
+  SDL_Surface *initial = TTF_RenderText_Blended(fnt, text, color);
+  int w                = nextpoweroftwo(initial->w);
+  int h                = nextpoweroftwo(initial->h);
 
-  SDL_Surface *intermediary = SDL_CreateRGBSurface(0, w, h, 32,
-                                                   0x00ff0000, 0x0000ff00,
-                                                   0x000000ff, 0xff000000);
+  SDL_Surface *intermediary = SDL_CreateRGBSurface(
+      0, w, h, 32, 0x00ff0000, 0x0000ff00, 0x000000ff, 0xff000000);
   SDL_BlitSurface(initial, 0, intermediary, 0);
 
   GLuint texture;
@@ -32,10 +31,14 @@ static void SDL_GL_RenderText(char *text, TTF_Font *fnt, SDL_Color color,
   glColor3f(1.0f, 1.0f, 1.0f);
 
   glBegin(GL_QUADS);
-  glTexCoord2f(0.0f, 1.0f); glVertex2f(location->x,     location->y);
-  glTexCoord2f(1.0f, 1.0f); glVertex2f(location->x + w, location->y);
-  glTexCoord2f(1.0f, 0.0f); glVertex2f(location->x + w, location->y + h);
-  glTexCoord2f(0.0f, 0.0f); glVertex2f(location->x,     location->y + h);
+  glTexCoord2f(0.0f, 1.0f);
+  glVertex2f(location->x, location->y);
+  glTexCoord2f(1.0f, 1.0f);
+  glVertex2f(location->x + w, location->y);
+  glTexCoord2f(1.0f, 0.0f);
+  glVertex2f(location->x + w, location->y + h);
+  glTexCoord2f(0.0f, 0.0f);
+  glVertex2f(location->x, location->y + h);
   glEnd();
 
   glFinish();
@@ -74,8 +77,8 @@ void write_text(char *text, bool top) {
   glEnable2D();
   glDisable(GL_DEPTH_TEST);
 
-  SDL_Color white    = {255, 255, 255, 255};
-  SDL_Rect  position;
+  SDL_Color white = {255, 255, 255, 255};
+  SDL_Rect position;
   position.x = 0;
   position.y = top ? SCREENHEIGHT - 32 : 0;
 

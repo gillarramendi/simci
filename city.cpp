@@ -124,7 +124,7 @@ void city::level(int start_x, int start_y, int end_x, int end_y, float height) {
 }
 
 void city::create_building(int x, int y) {
-  structure *str = new structure();
+  structure *str     = new structure();
   map[x][y].building = str;
 }
 
@@ -137,7 +137,7 @@ void city::create_building(int start_x, int start_y, int end_x, int end_y) {
   int i, j;
   for (i = x1; i <= x2; i++)
     for (j = y1; j <= y2; j++) {
-      structure *str = new structure();
+      structure *str     = new structure();
       map[i][j].building = str;
     }
 }

@@ -12,8 +12,8 @@ L3DS scene;
 // L3DS test variables (used in the TESTING L3DS block below)
 float angle;
 float udistance;
-uint  ticks;
-uint  frame;
+uint ticks;
+uint frame;
 float speed;
 
 void setup_opengl(int width, int height) {
@@ -112,10 +112,10 @@ void setup_opengl(int width, int height) {
 // Uses OpenGL selection mode: renders the scene without touching the frame
 // buffer and collects the names of any primitives inside a 2x2 pick region.
 int RetrieveObjectID(int x, int y) {
-  int          objectsFound  = 0;
-  int          viewportCoords[4]  = {0};
+  int objectsFound      = 0;
+  int viewportCoords[4] = {0};
   // 4 slots per hit record: name_count, min_depth, max_depth, name
-  unsigned int selectBuffer[32]   = {0};
+  unsigned int selectBuffer[32] = {0};
 
   // Register the selection buffer
   glSelectBuffer(32, selectBuffer);
@@ -152,8 +152,8 @@ int RetrieveObjectID(int x, int y) {
   if (objectsFound > 0) {
     // Each hit record: [name_count, min_depth, max_depth, name].
     // Pick the record with the lowest min_depth (closest to the camera).
-    unsigned int lowestDepth   = selectBuffer[1];
-    int          selectedObject = selectBuffer[3];
+    unsigned int lowestDepth = selectBuffer[1];
+    int selectedObject       = selectBuffer[3];
 
     for (int i = 1; i < objectsFound; i++) {
       if (selectBuffer[(i * 4) + 1] < lowestDepth) {
@@ -174,9 +174,8 @@ int RetrieveObjectID(int x, int y) {
 static void set_camera() {
   float eye_x = 1.4142f * cam_x + (-cam_y - cam_x) * 0.7071f;
   float eye_z = (-cam_y - cam_x) * 0.7071f;
-  gluLookAt(eye_x,      cam_z,      eye_z,
-            eye_x - 10, cam_z - 10, eye_z - 10,
-            0.0,        1.0,        0.0);
+  gluLookAt(eye_x, cam_z, eye_z, eye_x - 10, cam_z - 10, eye_z - 10, 0.0, 1.0,
+            0.0);
 }
 
 void draw_screen() {
@@ -202,11 +201,21 @@ void draw_screen() {
       // Pick color from the color overlay, zone type, or cursor highlight
       if (sim_city->color_layer[i][j] == nullptr) {
         switch (sim_city->map[i][j].type) {
-        case RES:  glColor4ubv(dark_green); break;
-        case COM:  glColor4ubv(blue);       break;
-        case IND:  glColor4ubv(yellow);     break;
-        case ROAD: glColor4ubv(black);      break;
-        default:   glColor4ubv(green);      break;
+        case RES:
+          glColor4ubv(dark_green);
+          break;
+        case COM:
+          glColor4ubv(blue);
+          break;
+        case IND:
+          glColor4ubv(yellow);
+          break;
+        case ROAD:
+          glColor4ubv(black);
+          break;
+        default:
+          glColor4ubv(green);
+          break;
         }
       } else {
         glColor4ubv(sim_city->color_layer[i][j]);
@@ -215,10 +224,10 @@ void draw_screen() {
       if (sim_city->cursor_x == i && sim_city->cursor_y == j)
         glColor4ubv(white);
 
-      glVertex3f(i,     sim_city->map[i][j].height,         j);
-      glVertex3f(i,     sim_city->map[i][j + 1].height,     j + 1);
+      glVertex3f(i, sim_city->map[i][j].height, j);
+      glVertex3f(i, sim_city->map[i][j + 1].height, j + 1);
       glVertex3f(i + 1, sim_city->map[i + 1][j + 1].height, j + 1);
-      glVertex3f(i + 1, sim_city->map[i + 1][j].height,     j);
+      glVertex3f(i + 1, sim_city->map[i + 1][j].height, j);
     }
   }
   glEnd();
@@ -231,20 +240,20 @@ void draw_screen() {
   for (i = 0; i < sim_city->xsize; i++) {
     for (j = 0; j < sim_city->ysize; j++) {
       // Left and bottom edges of each cell
-      glVertex3f(i,     sim_city->map[i][j].height,     j);
+      glVertex3f(i, sim_city->map[i][j].height, j);
       glVertex3f(i + 1, sim_city->map[i + 1][j].height, j);
 
-      glVertex3f(i, sim_city->map[i][j].height,     j);
+      glVertex3f(i, sim_city->map[i][j].height, j);
       glVertex3f(i, sim_city->map[i][j + 1].height, j + 1);
 
       // Right border (last column only)
       if (i == sim_city->xsize - 1) {
-        glVertex3f(i + 1, sim_city->map[i + 1][j].height,     j);
+        glVertex3f(i + 1, sim_city->map[i + 1][j].height, j);
         glVertex3f(i + 1, sim_city->map[i + 1][j + 1].height, j + 1);
       }
       // Top border (last row only)
       if (j == sim_city->ysize - 1) {
-        glVertex3f(i,     sim_city->map[i][j + 1].height,     j + 1);
+        glVertex3f(i, sim_city->map[i][j + 1].height, j + 1);
         glVertex3f(i + 1, sim_city->map[i + 1][j + 1].height, j + 1);
       }
     }
@@ -262,28 +271,28 @@ void draw_screen() {
 
       float alt = sim_city->map[i][j].height;
 
-      glVertex3f(i + d,     alt,     j + d);     // face 1
-      glVertex3f(i + d,     alt,     j + 1 - d);
-      glVertex3f(i + d,     alt + 1, j + 1 - d);
-      glVertex3f(i + d,     alt + 1, j + d);
+      glVertex3f(i + d, alt, j + d); // face 1
+      glVertex3f(i + d, alt, j + 1 - d);
+      glVertex3f(i + d, alt + 1, j + 1 - d);
+      glVertex3f(i + d, alt + 1, j + d);
 
-      glVertex3f(i + d,     alt,     j + 1 - d); // face 2
-      glVertex3f(i + 1 - d, alt,     j + 1 - d);
+      glVertex3f(i + d, alt, j + 1 - d); // face 2
+      glVertex3f(i + 1 - d, alt, j + 1 - d);
       glVertex3f(i + 1 - d, alt + 1, j + 1 - d);
-      glVertex3f(i + d,     alt + 1, j + 1 - d);
+      glVertex3f(i + d, alt + 1, j + 1 - d);
 
-      glVertex3f(i + 1 - d, alt,     j + 1 - d); // face 3
-      glVertex3f(i + 1 - d, alt,     j + d);
+      glVertex3f(i + 1 - d, alt, j + 1 - d); // face 3
+      glVertex3f(i + 1 - d, alt, j + d);
       glVertex3f(i + 1 - d, alt + 1, j + d);
       glVertex3f(i + 1 - d, alt + 1, j + 1 - d);
 
-      glVertex3f(i + 1 - d, alt,     j + d);     // face 4
-      glVertex3f(i + d,     alt,     j + d);
-      glVertex3f(i + d,     alt + 1, j + d);
+      glVertex3f(i + 1 - d, alt, j + d); // face 4
+      glVertex3f(i + d, alt, j + d);
+      glVertex3f(i + d, alt + 1, j + d);
       glVertex3f(i + 1 - d, alt + 1, j + d);
 
-      glVertex3f(i + d,     alt + 1, j + d);     // ceiling
-      glVertex3f(i + d,     alt + 1, j + 1 - d);
+      glVertex3f(i + d, alt + 1, j + d); // ceiling
+      glVertex3f(i + d, alt + 1, j + 1 - d);
       glVertex3f(i + 1 - d, alt + 1, j + 1 - d);
       glVertex3f(i + 1 - d, alt + 1, j + d);
     }
@@ -359,10 +368,10 @@ void draw_screen_lite() {
       glLoadName((i + 1) * 1000 + (j + 1));
 
       glBegin(GL_QUADS);
-      glVertex3f(i,     sim_city->map[i][j].height,         j);
-      glVertex3f(i,     sim_city->map[i][j + 1].height,     j + 1);
+      glVertex3f(i, sim_city->map[i][j].height, j);
+      glVertex3f(i, sim_city->map[i][j + 1].height, j + 1);
       glVertex3f(i + 1, sim_city->map[i + 1][j + 1].height, j + 1);
-      glVertex3f(i + 1, sim_city->map[i + 1][j].height,     j);
+      glVertex3f(i + 1, sim_city->map[i + 1][j].height, j);
       glEnd();
     }
   }
@@ -379,28 +388,28 @@ void draw_screen_lite() {
 
       float alt = sim_city->map[i][j].height;
 
-      glVertex3f(i + d,     alt,     j + d);
-      glVertex3f(i + d,     alt,     j + 1 - d);
-      glVertex3f(i + d,     alt + 1, j + 1 - d);
-      glVertex3f(i + d,     alt + 1, j + d);
+      glVertex3f(i + d, alt, j + d);
+      glVertex3f(i + d, alt, j + 1 - d);
+      glVertex3f(i + d, alt + 1, j + 1 - d);
+      glVertex3f(i + d, alt + 1, j + d);
 
-      glVertex3f(i + d,     alt,     j + 1 - d);
-      glVertex3f(i + 1 - d, alt,     j + 1 - d);
+      glVertex3f(i + d, alt, j + 1 - d);
+      glVertex3f(i + 1 - d, alt, j + 1 - d);
       glVertex3f(i + 1 - d, alt + 1, j + 1 - d);
-      glVertex3f(i + d,     alt + 1, j + 1 - d);
+      glVertex3f(i + d, alt + 1, j + 1 - d);
 
-      glVertex3f(i + 1 - d, alt,     j + 1 - d);
-      glVertex3f(i + 1 - d, alt,     j + d);
+      glVertex3f(i + 1 - d, alt, j + 1 - d);
+      glVertex3f(i + 1 - d, alt, j + d);
       glVertex3f(i + 1 - d, alt + 1, j + d);
       glVertex3f(i + 1 - d, alt + 1, j + 1 - d);
 
-      glVertex3f(i + 1 - d, alt,     j + d);
-      glVertex3f(i + d,     alt,     j + d);
-      glVertex3f(i + d,     alt + 1, j + d);
+      glVertex3f(i + 1 - d, alt, j + d);
+      glVertex3f(i + d, alt, j + d);
+      glVertex3f(i + d, alt + 1, j + d);
       glVertex3f(i + 1 - d, alt + 1, j + d);
 
-      glVertex3f(i + d,     alt + 1, j + d);
-      glVertex3f(i + d,     alt + 1, j + 1 - d);
+      glVertex3f(i + d, alt + 1, j + d);
+      glVertex3f(i + d, alt + 1, j + 1 - d);
       glVertex3f(i + 1 - d, alt + 1, j + 1 - d);
       glVertex3f(i + 1 - d, alt + 1, j + d);
     }

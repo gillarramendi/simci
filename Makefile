@@ -1,8 +1,12 @@
 # Runnable file name
 TARGET = simci
 
-# Source code files
+# Source code files (all .cpp, used for compilation)
 SRC = *.cpp
+
+# Files to format/check — excludes the third-party l3ds library
+FMT_SRC = $(filter-out l3ds.cpp, $(wildcard *.cpp))
+FMT_HDR = $(filter-out l3ds.h,   $(wildcard *.h))
 
 # Compiler
 CXX = g++
@@ -36,12 +40,12 @@ $(TARGET): $(SRC)
 clean:
 	rm -f $(TARGET)
 
-# Format all C++ source files in place
+# Format all C++ source files in place (l3ds excluded — third-party library)
 format:
-	clang-format -i $(SRC) $(wildcard *.h)
+	clang-format -i $(FMT_SRC) $(FMT_HDR)
 
 # Optional: check formatting without changing files
 format-check:
-	clang-format --dry-run --Werror $(SRC) $(wildcard *.h)
+	clang-format --dry-run --Werror $(FMT_SRC) $(FMT_HDR)
 
 .PHONY: all clean format format-check

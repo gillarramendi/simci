@@ -40,30 +40,30 @@ class structure;
 #include "l3ds.h"
 
 // Colors — inline constexpr so there is exactly one definition across all TUs
-inline constexpr GLubyte red[]        = {255, 0,   0,   255};
-inline constexpr GLubyte green[]      = {0,   255, 0,   255};
-inline constexpr GLubyte dark_green[] = {0,   153, 0,   255};
-inline constexpr GLubyte blue[]       = {0,   0,   255, 255};
+inline constexpr GLubyte red[]        = {255, 0, 0, 255};
+inline constexpr GLubyte green[]      = {0, 255, 0, 255};
+inline constexpr GLubyte dark_green[] = {0, 153, 0, 255};
+inline constexpr GLubyte blue[]       = {0, 0, 255, 255};
 inline constexpr GLubyte white[]      = {255, 255, 255, 255};
-inline constexpr GLubyte yellow[]     = {255, 255, 0,   255};
-inline constexpr GLubyte black[]      = {0,   0,   0,   255};
-inline constexpr GLubyte orange[]     = {255, 153, 0,   255};
-inline constexpr GLubyte purple[]     = {102, 0,   102, 255}; // fixed: alpha was 0
+inline constexpr GLubyte yellow[]     = {255, 255, 0, 255};
+inline constexpr GLubyte black[]      = {0, 0, 0, 255};
+inline constexpr GLubyte orange[]     = {255, 153, 0, 255};
+inline constexpr GLubyte purple[] = {102, 0, 102, 255}; // fixed: alpha was 0
 
 // Cell zone types
-#define RES  0 // Residential
-#define COM  1 // Commerce
-#define IND  2 // Industry
+#define RES 0  // Residential
+#define COM 1  // Commerce
+#define IND 2  // Industry
 #define ROAD 3 // Roads
 
 // Game action types (NONE doubles as the "no zone" cell type; value 10 avoids
 // colliding with RES/COM/IND/ROAD values 0-3)
-#define NONE     10 // No action / no zone
-#define TER_UP   11 // Terrain up
+#define NONE 10     // No action / no zone
+#define TER_UP 11   // Terrain up
 #define TER_DOWN 12 // Terrain down
-#define LEVEL    13 // Level the land
-#define BUILD    14 // Build
-#define UNDO     15 // Undo
+#define LEVEL 13    // Level the land
+#define BUILD 14    // Build
+#define UNDO 15     // Undo
 
 // Structure types
 #define HOUSE 20

@@ -1,0 +1,12 @@
+---
+Language:      Cpp
+BasedOnStyle:  LLVM
+
+# LLVM sorts includes alphabetically by default; disable to preserve the
+# forward-declaration order in simci.h (city/cell/structure before their headers)
+SortIncludes: Never
+
+# LLVM does not align = signs by default; enable so consecutive declarations
+# stay visually grouped (e.g. bool key_up_pressed    = false;)
+AlignConsecutiveAssignments:
+  Enabled: true
