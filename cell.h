@@ -1,6 +1,7 @@
-#include "simci.h"
 #ifndef __CELL_H
 #define __CELL_H
+
+#include "simci.h"
 
 class cell {
 

@@ -1,7 +1,7 @@
-
-#include "simci.h"
 #ifndef __STRUCTURE_H
 #define __STRUCTURE_H
+
+#include "simci.h"
 
 class structure {
 

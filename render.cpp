@@ -1,6 +1,6 @@
 #include "render.h"
 
-// the camera’s position in its own coordinate system
+// Camera position in world space
 int cam_x = 0;
 int cam_y = -30;
 int cam_z = 20;
@@ -9,52 +9,37 @@ extern city *sim_city;
 
 L3DS scene;
 
+// L3DS test variables (used in the TESTING L3DS block below)
 float angle;
-
 float udistance;
-
-uint ticks;
-
-uint frame;
-
+uint  ticks;
+uint  frame;
 float speed;
 
 void setup_opengl(int width, int height) {
   float ratio = (float)width / (float)height;
 
-  /* Our shading model--Gouraud (smooth). */
-  glShadeModel(GL_SMOOTH); //(GL_FLAT);  // smoothing polygons
+  /* Gouraud (smooth) shading */
+  glShadeModel(GL_SMOOTH);
 
-  /* Culling. */
+  /* Back-face culling */
   glCullFace(GL_BACK);
   glFrontFace(GL_CCW);
   glEnable(GL_CULL_FACE);
 
-  glEnable(GL_DEPTH_TEST); // hide objects in the background
+  /* Hide objects behind closer ones */
+  glEnable(GL_DEPTH_TEST);
 
-  // glEnable(GL_LIGHTING);// put a ligthting. It only works with text!!
-  // glEnable(GL_LIGHT0);
+  /* Background color (dark teal) */
+  glClearColor(0, 0.2f, 0.3f, 0);
 
-  /* Set the clear color. */
-  glClearColor(0, 0.2, 0.3, 0); // Background color
-                                // red,green,blue, alpha
-
-  /* Required if you want alpha-blended textures (for our fonts) */
-  //	glBlendFunc(GL_ONE, GL_ONE);
-  //	glEnable(GL_BLEND);
-
-  /* Setup our viewport. */
   glViewport(0, 0, width, height);
 
-  /*
-   * Change to the projection matrix and set
-   * our viewing volume.
-   */
+  /* Set up the perspective projection */
   glMatrixMode(GL_PROJECTION);
   glLoadIdentity();
-
-  // gluPerspective( 60.0, ratio, 1.0, 1024.0 );
-  gluPerspective(45.0, ratio, 1.0f, 1024.0f); // Same as in ReceiveObjectID
+  // Same FOV used in RetrieveObjectID — must stay in sync
+  gluPerspective(45.0, ratio, 1.0f, 1024.0f);
 
   //////////////////////////TESTING L3DS /////////////////////////////
   /*
@@ -122,276 +107,187 @@ void setup_opengl(int width, int height) {
     printf("3ds loaded correctly\n");
 }
 
-// Given a clicked position, returns the identification (ID) of the object
-// (square) located at that position.
+// Given a clicked screen position (x, y), returns the GL name (ID) of the
+// terrain cell under the cursor, or 0 if nothing was hit.
+// Uses OpenGL selection mode: renders the scene without touching the frame
+// buffer and collects the names of any primitives inside a 2x2 pick region.
 int RetrieveObjectID(int x, int y) {
-  int objectsFound = 0; // This will hold the amount of objects clicked
-  int viewportCoords[4] = {
-      0}; // We need an array to hold our view port coordinates
+  int          objectsFound  = 0;
+  int          viewportCoords[4]  = {0};
+  // 4 slots per hit record: name_count, min_depth, max_depth, name
+  unsigned int selectBuffer[32]   = {0};
 
-  int window_width = 640;
-  int window_height = 480;
+  // Register the selection buffer
+  glSelectBuffer(32, selectBuffer);
+  // Read current viewport (top, left, bottom, right)
+  glGetIntegerv(GL_VIEWPORT, viewportCoords);
 
-  // This will hold the ID's of the objects we click on.
-  // We make it an arbitrary number of 32 because openGL also stores other
-  // information that we don't care about.  There is about 4 slots of info for
-  // every object ID taken up.
-  unsigned int selectBuffer[32] = {0};
+  glMatrixMode(GL_PROJECTION);
+  glPushMatrix(); // save normal projection matrix
 
-  // glSelectBuffer is what we register our selection buffer with.  The first
-  // parameter is the size of our array.  The next parameter is the buffer to
-  // store the information found. More information on the information that will
-  // be stored in selectBuffer is further below.
+  // Switch to selection mode — renders normally but writes hit records instead
+  // of pixels
+  glRenderMode(GL_SELECT);
+  glLoadIdentity();
 
-  glSelectBuffer(
-      32, selectBuffer); // Setup our selection buffer to accept object ID's
-
-  // This function returns information about many things in OpenGL.  We pass in
-  // GL_VIEWPORT to get the view port coordinates.  It saves it like a RECT with
-  // {top, left, bottom, right}
-
-  glGetIntegerv(GL_VIEWPORT,
-                viewportCoords); // Get the current view port coordinates
-
-  // Now we want to get out of our GL_MODELVIEW matrix and start effecting our
-  // GL_PROJECTION matrix.  This allows us to check our X and Y coords against
-  // 3D space.
-
-  glMatrixMode(GL_PROJECTION); // We want to now effect our projection matrix
-
-  glPushMatrix(); // We push on a new matrix so we don't effect our 3D
-                  // projection
-
-  // This makes it so it doesn't change the frame buffer if we render into it,
-  // instead, a record of the names of primitives that would have been drawn if
-  // the render mode was GL_RENDER are now stored in the selection array
-  // (selectBuffer).
-
-  glRenderMode(GL_SELECT); // Allows us to render the objects, but not change
-                           // the frame buffer
-
-  glLoadIdentity(); // Reset our projection matrix
-
-  // gluPickMatrix allows us to create a projection matrix that is around our
-  // cursor.  This basically only allows rendering in the region that we
-  // specify. If an object is rendered into that region, then it saves that
-  // objects ID for us (The magic). The first 2 parameters are the X and Y
-  // position to start from, then the next 2 are the width and height of the
-  // region from the starting point.  The last parameter is of course our view
-  // port coordinates.  You will notice we subtract "y" from the BOTTOM view
-  // port coordinate.  We do this to flip the Y coordinates around.  The 0 y
-  // coordinate starts from the bottom, which is opposite to window's
-  // coordinates. We also give a 2 by 2 region to look for an object in.  This
-  // can be changed to preference.
-
+  // Build a pick matrix: a small projection window centered on the cursor.
+  // Y is flipped because OpenGL origin is bottom-left, SDL is top-left.
   gluPickMatrix(x, viewportCoords[3] - y, 2, 2, viewportCoords);
-
-  // Next, we just call our normal gluPerspective() function, exactly as we did
-  // on startup. This is to multiply the perspective matrix by the pick matrix
-  // we created up above.
-
-  // Same as in setup_opengl
-  gluPerspective(45.0f, (float)window_width / (float)window_height, 0.1f,
+  // Multiply by the same perspective as setup_opengl
+  gluPerspective(45.0f, (float)SCREENWIDTH / (float)SCREENHEIGHT, 1.0f,
                  1024.0f);
 
-  glMatrixMode(GL_MODELVIEW); // Go back into our model view matrix
+  glMatrixMode(GL_MODELVIEW);
 
-  // RenderScene();
-  // Now we render into our selective mode to pinpoint clicked objects
+  // Render the simplified scene to populate the selection buffer
   draw_screen_lite();
 
-  // If we return to our normal render mode from select mode, glRenderMode
-  // returns the number of objects that were found in our specified region
-  // (specified in gluPickMatrix())
+  // Exit selection mode; returns the number of hit records written
+  objectsFound = glRenderMode(GL_RENDER);
 
-  objectsFound = glRenderMode(
-      GL_RENDER); // Return to render mode and get the number of objects found
-
-  glMatrixMode(GL_PROJECTION); // Put our projection matrix back to normal.
-  glPopMatrix();               // Stop effecting our projection matrix
-
-  glMatrixMode(GL_MODELVIEW); // Go back to our normal model view matrix
-
-  // PHEW!  That was some stuff confusing stuff.  Now we are out of the clear
-  // and should have an ID of the object we clicked on.  objectsFound should be
-  // at least 1 if we found an object.
+  glMatrixMode(GL_PROJECTION);
+  glPopMatrix(); // restore normal projection matrix
+  glMatrixMode(GL_MODELVIEW);
 
   if (objectsFound > 0) {
-    // If we found more than one object, we need to check the depth values
-    // of all the objects found.  The object with the LEAST depth value is
-    // the closest object that we clicked on.  Depending on what you are doing,
-    // you might want ALL the objects that you clicked on (if some objects were
-    // behind the closest one), but for this tutorial we just care about the one
-    // in front.  So, how do we get the depth value?  Well, The selectionBuffer
-    // holds it.  For every object there is 4 values.  The first value is
-    // "the number of names in the name stack at the time of the event, followed
-    // by the minimum and maximum depth values of all vertices that hit since
-    // the previous event, then followed by the name stack contents, bottom name
-    // first." - MSDN The only ones we care about are the minimum depth value
-    // (the second value) and the object ID that was passed into glLoadName()
-    // (This is the fourth value). So, [0 - 3] is the first object's data, [4 -
-    // 7] is the second object's data, etc... Be carefull though, because if you
-    // are displaying 2D text in front, it will always find that as the lowest
-    // object.  So make sure you disable text when rendering the screen for the
-    // object test.  I use a flag for RenderScene(). So, lets get the object
-    // with the lowest depth!
+    // Each hit record: [name_count, min_depth, max_depth, name].
+    // Pick the record with the lowest min_depth (closest to the camera).
+    unsigned int lowestDepth   = selectBuffer[1];
+    int          selectedObject = selectBuffer[3];
 
-    // Set the lowest depth to the first object to start it off.
-    // 1 is the first object's minimum Z value.
-    // We use an unsigned int so we don't get a warning with selectBuffer below.
-    unsigned int lowestDepth = selectBuffer[1];
-
-    // Set the selected object to the first object to start it off.
-    // 3 is the first object's object ID we passed into glLoadName().
-    int selectedObject = selectBuffer[3];
-
-    // Go through all of the objects found, but start at the second one
     for (int i = 1; i < objectsFound; i++) {
-      // Check if the current objects depth is lower than the current lowest
-      // Notice we times i by 4 (4 values for each object) and add 1 for the
-      // depth.
       if (selectBuffer[(i * 4) + 1] < lowestDepth) {
-        // Set the current lowest depth
-        lowestDepth = selectBuffer[(i * 4) + 1];
-
-        // Set the current object ID
+        lowestDepth    = selectBuffer[(i * 4) + 1];
         selectedObject = selectBuffer[(i * 4) + 3];
       }
     }
 
-    // Return the selected object
     return selectedObject;
   }
 
-  // We didn't click on any objects so return 0
+  // No object under the cursor
   return 0;
+}
+
+// Convert cam_x/cam_y/cam_z into a gluLookAt call for the isometric view.
+// sqrt(2) ≈ 1.4142, sqrt(2)/2 ≈ 0.7071 — standard 45° isometric math.
+static void set_camera() {
+  float eye_x = 1.4142f * cam_x + (-cam_y - cam_x) * 0.7071f;
+  float eye_z = (-cam_y - cam_x) * 0.7071f;
+  gluLookAt(eye_x,      cam_z,      eye_z,
+            eye_x - 10, cam_z - 10, eye_z - 10,
+            0.0,        1.0,        0.0);
 }
 
 void draw_screen() {
   int i, j;
-  float d, alt;
 
-  /* Clear the color and depth buffers. */
+  /* Clear color and depth buffers */
   glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-  /* We don't want to modify the projection matrix. */
+  /* We don't want to modify the projection matrix */
   glMatrixMode(GL_MODELVIEW);
   glLoadIdentity();
+  set_camera();
 
-  // Set the camera
-  gluLookAt(1.4142 * cam_x + (-cam_y - cam_x) * 0.7071, cam_z,
-            (-cam_y - cam_x) * 0.7071,
-            1.4142 * cam_x + (-cam_y - cam_x) * 0.7071 - 10, cam_z - 10,
-            (-cam_y - cam_x) * 0.7071 - 10, 0.0, 1.0, 0.0);
+  /* Send terrain quad data to the pipeline */
 
-  /* Send our quad data to the pipeline. */
-
-  // Draw squares
+  // Polygon offset pushes filled quads slightly deeper so the grid lines
+  // drawn at the same vertices always win the depth test (no z-fighting).
+  glEnable(GL_POLYGON_OFFSET_FILL);
+  glPolygonOffset(1.0f, 1.0f);
   glBegin(GL_QUADS);
-
-  for (i = 0; i < sim_city->xsize; i++)
+  for (i = 0; i < sim_city->xsize; i++) {
     for (j = 0; j < sim_city->ysize; j++) {
-      if (sim_city->color_layer[i][j] == NULL) {
+      // Pick color from the color overlay, zone type, or cursor highlight
+      if (sim_city->color_layer[i][j] == nullptr) {
         switch (sim_city->map[i][j].type) {
-        case RES:
-          glColor4ubv(dark_green);
-          break;
-        case COM:
-          glColor4ubv(blue);
-          break;
-        case IND:
-          glColor4ubv(yellow);
-          break;
-        case ROAD:
-          glColor4ubv(black);
-          break;
-        case NONE:
-          glColor4ubv(green);
-          break;
-        default:
-          glColor4ubv(green);
-          break;
+        case RES:  glColor4ubv(dark_green); break;
+        case COM:  glColor4ubv(blue);       break;
+        case IND:  glColor4ubv(yellow);     break;
+        case ROAD: glColor4ubv(black);      break;
+        default:   glColor4ubv(green);      break;
         }
-      } else
+      } else {
         glColor4ubv(sim_city->color_layer[i][j]);
+      }
 
       if (sim_city->cursor_x == i && sim_city->cursor_y == j)
         glColor4ubv(white);
 
-      glVertex3f(i, sim_city->map[i][j].height, j);
-      glVertex3f(i, sim_city->map[i][j + 1].height, j + 1);
+      glVertex3f(i,     sim_city->map[i][j].height,         j);
+      glVertex3f(i,     sim_city->map[i][j + 1].height,     j + 1);
       glVertex3f(i + 1, sim_city->map[i + 1][j + 1].height, j + 1);
-      glVertex3f(i + 1, sim_city->map[i + 1][j].height, j);
+      glVertex3f(i + 1, sim_city->map[i + 1][j].height,     j);
     }
+  }
   glEnd();
+  glDisable(GL_POLYGON_OFFSET_FILL);
 
-  // Draw lines
-  glLineWidth(2.0);
-
+  // Draw grid lines on top of the quads
+  glLineWidth(2.0f);
   glBegin(GL_LINES);
-
   glColor4ubv(black);
-
-  for (i = 0; i < sim_city->xsize; i++)
+  for (i = 0; i < sim_city->xsize; i++) {
     for (j = 0; j < sim_city->ysize; j++) {
-
-      glVertex3f(i, sim_city->map[i][j].height, j);
+      // Left and bottom edges of each cell
+      glVertex3f(i,     sim_city->map[i][j].height,     j);
       glVertex3f(i + 1, sim_city->map[i + 1][j].height, j);
 
-      glVertex3f(i, sim_city->map[i][j].height, j);
+      glVertex3f(i, sim_city->map[i][j].height,     j);
       glVertex3f(i, sim_city->map[i][j + 1].height, j + 1);
 
+      // Right border (last column only)
       if (i == sim_city->xsize - 1) {
-        glVertex3f(i + 1, sim_city->map[i + 1][j].height, j);
+        glVertex3f(i + 1, sim_city->map[i + 1][j].height,     j);
         glVertex3f(i + 1, sim_city->map[i + 1][j + 1].height, j + 1);
       }
+      // Top border (last row only)
       if (j == sim_city->ysize - 1) {
-        glVertex3f(i, sim_city->map[i][j + 1].height, j + 1);
+        glVertex3f(i,     sim_city->map[i][j + 1].height,     j + 1);
         glVertex3f(i + 1, sim_city->map[i + 1][j + 1].height, j + 1);
       }
     }
-
+  }
   glEnd();
 
-  // draw buildings
-
-  d = 0.15;
+  // Draw buildings as red cubes (skipped on non-flat cells)
+  const float d = 0.15f; // inset from cell edge
   glBegin(GL_QUADS);
-
   glColor4ubv(red);
-
-  for (i = 0; i < sim_city->xsize; i++)
+  for (i = 0; i < sim_city->xsize; i++) {
     for (j = 0; j < sim_city->ysize; j++) {
-      if (sim_city->is_flat(i, j) && sim_city->map[i][j].building != NULL) {
-        alt = sim_city->map[i][j].height;
+      if (!sim_city->is_flat(i, j) || sim_city->map[i][j].building == nullptr)
+        continue;
 
-        glVertex3f(i + d, alt, j + d); // cube face 1
-        glVertex3f(i + d, alt, j + 1 - d);
-        glVertex3f(i + d, alt + 1, j + 1 - d);
-        glVertex3f(i + d, alt + 1, j + d);
+      float alt = sim_city->map[i][j].height;
 
-        glVertex3f(i + d, alt, j + 1 - d); // cube face 2
-        glVertex3f(i + 1 - d, alt, j + 1 - d);
-        glVertex3f(i + 1 - d, alt + 1, j + 1 - d);
-        glVertex3f(i + d, alt + 1, j + 1 - d);
+      glVertex3f(i + d,     alt,     j + d);     // face 1
+      glVertex3f(i + d,     alt,     j + 1 - d);
+      glVertex3f(i + d,     alt + 1, j + 1 - d);
+      glVertex3f(i + d,     alt + 1, j + d);
 
-        glVertex3f(i + 1 - d, alt, j + 1 - d); // cube face 3
-        glVertex3f(i + 1 - d, alt, j + d);
-        glVertex3f(i + 1 - d, alt + 1, j + d);
-        glVertex3f(i + 1 - d, alt + 1, j + 1 - d);
+      glVertex3f(i + d,     alt,     j + 1 - d); // face 2
+      glVertex3f(i + 1 - d, alt,     j + 1 - d);
+      glVertex3f(i + 1 - d, alt + 1, j + 1 - d);
+      glVertex3f(i + d,     alt + 1, j + 1 - d);
 
-        glVertex3f(i + 1 - d, alt, j + d); // cube face 4
-        glVertex3f(i + d, alt, j + d);
-        glVertex3f(i + d, alt + 1, j + d);
-        glVertex3f(i + 1 - d, alt + 1, j + d);
+      glVertex3f(i + 1 - d, alt,     j + 1 - d); // face 3
+      glVertex3f(i + 1 - d, alt,     j + d);
+      glVertex3f(i + 1 - d, alt + 1, j + d);
+      glVertex3f(i + 1 - d, alt + 1, j + 1 - d);
 
-        glVertex3f(i + d, alt + 1, j + d); // ceiling
-        glVertex3f(i + d, alt + 1, j + 1 - d);
-        glVertex3f(i + 1 - d, alt + 1, j + 1 - d);
-        glVertex3f(i + 1 - d, alt + 1, j + d);
-      }
+      glVertex3f(i + 1 - d, alt,     j + d);     // face 4
+      glVertex3f(i + d,     alt,     j + d);
+      glVertex3f(i + d,     alt + 1, j + d);
+      glVertex3f(i + 1 - d, alt + 1, j + d);
+
+      glVertex3f(i + d,     alt + 1, j + d);     // ceiling
+      glVertex3f(i + d,     alt + 1, j + 1 - d);
+      glVertex3f(i + 1 - d, alt + 1, j + 1 - d);
+      glVertex3f(i + 1 - d, alt + 1, j + d);
     }
-
+  }
   glEnd();
 
   //////////////////////////TESTING L3DS /////////////////////////////
@@ -440,84 +336,74 @@ void draw_screen() {
   //////////////////////////END TESTING L3DS////////////////////////////
 }
 
-// simple scene draw, only used in RetrieveObjectID
+// Simplified scene used only by RetrieveObjectID for hit-testing.
+// Each terrain quad is assigned a GL name: (i+1)*1000 + (j+1).
+// No colors, no grid lines — just geometry for the selection buffer.
 void draw_screen_lite() {
   int i, j;
-  float d, alt;
 
-  /* Clear the color and depth buffers. */
+  /* Clear color and depth buffers */
   glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-  /* We don't want to modify the projection matrix. */
+  /* We don't want to modify the projection matrix */
   glMatrixMode(GL_MODELVIEW);
   glLoadIdentity();
-
-  // Put the camera
-  gluLookAt(1.4142 * cam_x + (-cam_y - cam_x) * 0.7071, cam_z,
-            (-cam_y - cam_x) * 0.7071,
-            1.4142 * cam_x + (-cam_y - cam_x) * 0.7071 - 10, cam_z - 10,
-            (-cam_y - cam_x) * 0.7071 - 10, 0.0, 1.0, 0.0);
+  set_camera();
 
   glInitNames();
-
   glPushName(0);
 
-  /* Send our quad data to the pipeline. */
-
-  // draw squares
-
-  for (i = 0; i < sim_city->xsize; i++)
+  /* Assign a unique GL name to each terrain quad for picking */
+  for (i = 0; i < sim_city->xsize; i++) {
     for (j = 0; j < sim_city->ysize; j++) {
       glLoadName((i + 1) * 1000 + (j + 1));
 
       glBegin(GL_QUADS);
-
-      glVertex3f(i, sim_city->map[i][j].height, j);
-      glVertex3f(i, sim_city->map[i][j + 1].height, j + 1);
+      glVertex3f(i,     sim_city->map[i][j].height,         j);
+      glVertex3f(i,     sim_city->map[i][j + 1].height,     j + 1);
       glVertex3f(i + 1, sim_city->map[i + 1][j + 1].height, j + 1);
-      glVertex3f(i + 1, sim_city->map[i + 1][j].height, j);
-
+      glVertex3f(i + 1, sim_city->map[i + 1][j].height,     j);
       glEnd();
     }
+  }
 
-  glInitNames();
+  glInitNames(); // clear name stack before drawing buildings (no ID needed)
 
-  // draw buildings
-
-  d = 0.15;
+  // Also draw buildings so they can occlude terrain in the hit test
+  const float d = 0.15f;
   glBegin(GL_QUADS);
-
-  for (i = 0; i < sim_city->xsize; i++)
+  for (i = 0; i < sim_city->xsize; i++) {
     for (j = 0; j < sim_city->ysize; j++) {
-      if (sim_city->is_flat(i, j) && sim_city->map[i][j].building != NULL) {
-        alt = sim_city->map[i][j].height;
+      if (!sim_city->is_flat(i, j) || sim_city->map[i][j].building == nullptr)
+        continue;
 
-        glVertex3f(i + d, alt, j + d); // cube face 1
-        glVertex3f(i + d, alt, j + 1 - d);
-        glVertex3f(i + d, alt + 1, j + 1 - d);
-        glVertex3f(i + d, alt + 1, j + d);
+      float alt = sim_city->map[i][j].height;
 
-        glVertex3f(i + d, alt, j + 1 - d); // cube face 2
-        glVertex3f(i + 1 - d, alt, j + 1 - d);
-        glVertex3f(i + 1 - d, alt + 1, j + 1 - d);
-        glVertex3f(i + d, alt + 1, j + 1 - d);
+      glVertex3f(i + d,     alt,     j + d);
+      glVertex3f(i + d,     alt,     j + 1 - d);
+      glVertex3f(i + d,     alt + 1, j + 1 - d);
+      glVertex3f(i + d,     alt + 1, j + d);
 
-        glVertex3f(i + 1 - d, alt, j + 1 - d); // cube face 3
-        glVertex3f(i + 1 - d, alt, j + d);
-        glVertex3f(i + 1 - d, alt + 1, j + d);
-        glVertex3f(i + 1 - d, alt + 1, j + 1 - d);
+      glVertex3f(i + d,     alt,     j + 1 - d);
+      glVertex3f(i + 1 - d, alt,     j + 1 - d);
+      glVertex3f(i + 1 - d, alt + 1, j + 1 - d);
+      glVertex3f(i + d,     alt + 1, j + 1 - d);
 
-        glVertex3f(i + 1 - d, alt, j + d); // cube face 4
-        glVertex3f(i + d, alt, j + d);
-        glVertex3f(i + d, alt + 1, j + d);
-        glVertex3f(i + 1 - d, alt + 1, j + d);
+      glVertex3f(i + 1 - d, alt,     j + 1 - d);
+      glVertex3f(i + 1 - d, alt,     j + d);
+      glVertex3f(i + 1 - d, alt + 1, j + d);
+      glVertex3f(i + 1 - d, alt + 1, j + 1 - d);
 
-        glVertex3f(i + d, alt + 1, j + d); // ceiling
-        glVertex3f(i + d, alt + 1, j + 1 - d);
-        glVertex3f(i + 1 - d, alt + 1, j + 1 - d);
-        glVertex3f(i + 1 - d, alt + 1, j + d);
-      }
+      glVertex3f(i + 1 - d, alt,     j + d);
+      glVertex3f(i + d,     alt,     j + d);
+      glVertex3f(i + d,     alt + 1, j + d);
+      glVertex3f(i + 1 - d, alt + 1, j + d);
+
+      glVertex3f(i + d,     alt + 1, j + d);
+      glVertex3f(i + d,     alt + 1, j + 1 - d);
+      glVertex3f(i + 1 - d, alt + 1, j + 1 - d);
+      glVertex3f(i + 1 - d, alt + 1, j + d);
     }
-
+  }
   glEnd();
 }

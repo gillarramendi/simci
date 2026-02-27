@@ -1,6 +1,6 @@
 #include "city.h"
 
-city::city() { city(CITY_HEIGHT, CITY_WIDTH); }
+city::city() : city(CITY_HEIGHT, CITY_WIDTH) {}
 
 city::city(int xsize, int ysize) {
 

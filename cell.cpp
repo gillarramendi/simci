@@ -2,7 +2,8 @@
 
 cell::cell() {
   type = NONE;
-  height = 0.0;
+  height = 0.0f;
+  building = nullptr;
 }
 
-cell::~cell() {}
+cell::~cell() { delete building; }

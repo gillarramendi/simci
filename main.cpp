@@ -5,74 +5,62 @@ char fps_text_2[30] = "Status: None";
 
 city *sim_city;
 
-SDL_Surface *screen;
-
-// Camera position
+// Camera position (defined in render.cpp)
 extern int cam_x;
 extern int cam_y;
 extern int cam_z;
 
-// Game action type
+// Current game action (terrain, zone, build, road…)
 int action = NONE;
 
-// Button and keys pressed or not
+// Mouse button states
 bool button_1_pressed = false;
 bool button_2_pressed = false;
 bool button_3_pressed = false;
 
-bool key_up_pressed = false;
-bool key_down_pressed = false;
-bool key_left_pressed = false;
+// Arrow / zoom key states
+bool key_up_pressed    = false;
+bool key_down_pressed  = false;
+bool key_left_pressed  = false;
 bool key_right_pressed = false;
-
-bool key_plus_pressed = false;
+bool key_plus_pressed  = false;
 bool key_minus_pressed = false;
 
-// Last mouse click
+// Cell where the left mouse button was first pressed (-1 = none)
 int last_mouse_click_x = -1;
 int last_mouse_click_y = -1;
 
+/* Update the FPS counter once per second. */
 void update_fps() {
   static double last_fps_ts;
   static int frames_updated;
 
   double now = SDL_GetTicks();
   if (now >= last_fps_ts + SECOND) {
-    double fps = frames_updated * (now - last_fps_ts) / SECOND;
+    double fps = frames_updated * (double)SECOND / (now - last_fps_ts);
     snprintf(fps_text_1, sizeof(fps_text_1), "%.2f frame/sec", fps);
-
-    last_fps_ts = now;
+    last_fps_ts    = now;
     frames_updated = 0;
   }
 
   frames_updated++;
 }
 
+/* Release resources and exit. */
 void quit_program(int code) {
-  /*
-   * Quit SDL so we can release the fullscreen
-   * mode and restore the previous video settings,
-   * etc.
-   */
   delete sim_city;
-
   end_text();
-
   SDL_Quit();
-
-  /* Exit program. */
   exit(code);
 }
 
-// Given mouse position (x,y) returns cell coords
-// Otherwise koord=(-1,-1) and return -1
+// Given screen position (x, y), fills coordx/coordy with the cell under the
+// cursor. Returns 1 on hit, -1 if the mouse is not over any cell.
 int cell_coords(int x, int y, int *coordx, int *coordy) {
   int id = RetrieveObjectID(x, y);
   if (id != 0) {
     coordy[0] = id % 1000 - 1;
     coordx[0] = (int)id / 1000 - 1;
-    // cout << coordx[0] << ","<< coordy[0] << " clicked object on
-    // position\n"<< endl;
     return 1;
   } else {
     coordx[0] = -1;
@@ -82,12 +70,13 @@ int cell_coords(int x, int y, int *coordx, int *coordy) {
 }
 
 void handle_key_down(SDL_Keysym *keysym) {
-  cout << keysym->sym << " pressed\n" << endl;
+  std::cout << keysym->sym << " pressed\n" << std::endl;
   switch (keysym->sym) {
   case SDLK_ESCAPE:
     quit_program(0);
     break;
   case SDLK_SPACE:
+    // Reset camera to default position
     cam_x = 0;
     cam_y = -30;
     cam_z = 20;
@@ -132,34 +121,32 @@ void handle_key_down(SDL_Keysym *keysym) {
     action = ROAD;
     snprintf(fps_text_2, sizeof(fps_text_2), "Status: Road");
     break;
+
+  // Arrow keys: only set the flag; update_status() moves the camera every
+  // frame to avoid double-movement from key-repeat events.
   case SDLK_RIGHT:
     key_right_pressed = true;
-    cam_x++;
     break;
   case SDLK_LEFT:
     key_left_pressed = true;
-    cam_x--;
     break;
   case SDLK_UP:
     key_up_pressed = true;
-    cam_y++;
     break;
   case SDLK_DOWN:
     key_down_pressed = true;
-    cam_y--;
     break;
+
   case SDLK_PLUS:
   case SDLK_KP_PLUS:
-  case SDL_SCANCODE_F4: // SDL bug on mac?
-    cout << "plus pressed\n" << endl;
+  case SDL_SCANCODE_F4: // workaround for SDL + key on some Mac keyboards
+    std::cout << "plus pressed\n" << std::endl;
     key_plus_pressed = true;
-    cam_z++;
     break;
   case SDLK_MINUS:
   case SDLK_KP_MINUS:
-    cout << "minus pressed\n" << endl;
+    std::cout << "minus pressed\n" << std::endl;
     key_minus_pressed = true;
-    cam_z--;
     break;
 
   default:
@@ -203,34 +190,31 @@ void handle_mouse_button_down(SDL_Event event) {
   printf("Mouse button %d clicked on (%d,%d)\n", event.button.button,
          event.button.x, event.button.y);
   switch (event.button.button) {
-  case 1:
+  case SDL_BUTTON_LEFT:
     button_1_pressed = true;
-
+    // Store the cell where the drag started
     if (cell_coords(event.button.x, event.button.y, &coordx, &coordy) > 0) {
-      // user clicked on a cell, store position
       last_mouse_click_x = coordx;
       last_mouse_click_y = coordy;
     }
     break;
 
-  case 2:
+  case SDL_BUTTON_MIDDLE:
     button_2_pressed = true;
-
-    if (cell_coords(event.button.x, event.button.y, &coordx, &coordy) > 0) {
+    if (cell_coords(event.button.x, event.button.y, &coordx, &coordy) > 0)
       sim_city->create_building(coordx, coordy);
-    }
     break;
 
-  case 3:
+  case SDL_BUTTON_RIGHT:
     button_3_pressed = true;
-
     if (cell_coords(event.button.x, event.button.y, &coordx, &coordy) > 0)
       sim_city->down(coordx, coordy);
     break;
-  case 4:
+
+  case SDL_BUTTON_X1: // scroll up → zoom in
     cam_z++;
     break;
-  case 5:
+  case SDL_BUTTON_X2: // scroll down → zoom out
     cam_z--;
     break;
   }
@@ -240,9 +224,10 @@ void handle_mouse_button_up(SDL_Event event) {
   int coordx, coordy;
 
   switch (event.button.button) {
-  case 1:
+  case SDL_BUTTON_LEFT:
     button_1_pressed = false;
 
+    // Apply the action over the drag rectangle (click → release)
     if (cell_coords(event.button.x, event.button.y, &coordx, &coordy) > 0 &&
         last_mouse_click_x != -1 && last_mouse_click_y != -1) {
       switch (action) {
@@ -255,12 +240,14 @@ void handle_mouse_button_up(SDL_Event event) {
         sim_city->clear_color_layer();
         break;
       case LEVEL:
+        // Level to the height of the first clicked cell
         sim_city->level(
             last_mouse_click_x, last_mouse_click_y, coordx, coordy,
             sim_city->map[last_mouse_click_x][last_mouse_click_y].height);
         sim_city->clear_color_layer();
         break;
       case BUILD:
+        // Single click → one building; drag → fill rectangle
         if (last_mouse_click_x == coordx && last_mouse_click_y == coordy)
           sim_city->create_building(coordx, coordy);
         else
@@ -293,13 +280,15 @@ void handle_mouse_button_up(SDL_Event event) {
         break;
       }
     }
+    // Reset drag origin
     last_mouse_click_x = -1;
     last_mouse_click_y = -1;
     break;
-  case 2:
+
+  case SDL_BUTTON_MIDDLE:
     button_2_pressed = false;
     break;
-  case 3:
+  case SDL_BUTTON_RIGHT:
     button_3_pressed = false;
     break;
   default:
@@ -307,11 +296,10 @@ void handle_mouse_button_up(SDL_Event event) {
   }
 }
 
+/* Drain all pending SDL events and dispatch them. */
 void process_events(void) {
-  /* Our SDL event placeholder. */
   SDL_Event event;
 
-  /* Grab all the events off the queue. */
   while (SDL_PollEvent(&event)) {
     switch (event.type) {
     case SDL_MOUSEBUTTONDOWN:
@@ -321,51 +309,41 @@ void process_events(void) {
       handle_mouse_button_up(event);
       break;
     case SDL_KEYDOWN:
-      /* Handle key presses. */
       handle_key_down(&event.key.keysym);
       break;
     case SDL_KEYUP:
-      /* Handle key up. */
       handle_key_up(&event.key.keysym);
       break;
     case SDL_QUIT:
-      /* Handle quit requests (like Ctrl-c). */
+      /* Ctrl-C or window close button */
       quit_program(0);
       break;
     }
   }
 }
 
+/* Move the camera and refresh the color overlay preview every frame. */
 void update_status() {
   int mouse_x, mouse_y;
   int coordx, coordy;
 
-  // move the camera
+  // Edge-scroll: move camera when mouse is near the window border
   SDL_GetMouseState(&mouse_x, &mouse_y);
   // printf("Mouse in %d %d \n", mouse_x, mouse_y);
-  if (mouse_x < 10)
-    cam_x--;
-  if (mouse_x > SCREENWIDTH - 10)
-    cam_x++;
-  if (mouse_y < 10)
-    cam_y++;
-  if (mouse_y > SCREENHEIGHT - 10)
-    cam_y--;
+  if (mouse_x < 10)              cam_x--;
+  if (mouse_x > SCREENWIDTH - 10)  cam_x++;
+  if (mouse_y < 10)              cam_y++;
+  if (mouse_y > SCREENHEIGHT - 10) cam_y--;
 
-  // keys
-  if (key_up_pressed)
-    cam_y++;
-  if (key_down_pressed)
-    cam_y--;
-  if (key_left_pressed)
-    cam_x--;
-  if (key_right_pressed)
-    cam_x++;
-  if (key_plus_pressed)
-    cam_z++;
-  if (key_minus_pressed)
-    cam_z--;
+  // Keyboard camera movement (held keys)
+  if (key_up_pressed)    cam_y++;
+  if (key_down_pressed)  cam_y--;
+  if (key_left_pressed)  cam_x--;
+  if (key_right_pressed) cam_x++;
+  if (key_plus_pressed)  cam_z++;
+  if (key_minus_pressed) cam_z--;
 
+  // While dragging, highlight the selection rectangle with the action's color
   if (cell_coords(mouse_x, mouse_y, &coordx, &coordy) > 0 &&
       last_mouse_click_x != -1 && last_mouse_click_y != -1) {
     switch (action) {
@@ -407,7 +385,7 @@ void update_status() {
     }
   }
 
-  // Store current cursor position to draw it differently
+  // Track cursor cell so draw_screen() can highlight it
   sim_city->cursor_x = coordx;
   sim_city->cursor_y = coordy;
 }
@@ -419,7 +397,7 @@ int main(int argc, char *argv[]) {
     quit_program(1);
   }
 
-  // 2. Get current desktop display mode (replaces SDL_GetVideoInfo in SDL1.2)
+  // 2. Query the desktop resolution
   SDL_DisplayMode dm;
   if (SDL_GetDesktopDisplayMode(0, &dm) == 0) {
     printf("Resolution: %dx%d\n", dm.w, dm.h);
@@ -428,96 +406,60 @@ int main(int argc, char *argv[]) {
     quit_program(1);
   }
 
-  // 3. Get pixel-format from the display mode format
-  SDL_PixelFormat *fmt = SDL_AllocFormat(dm.format);
-  SDL_FreeFormat(fmt);
-
-  /*
-   * 4. Set OpenGL attributes — equivalent to SDL_GL_SetAttribute calls in
-   * SDL1.2 We request at least 5 bits each for red, green, and blue, a 16-bit
-   * depth buffer, and double buffering.
-   */
+  // 3. Request OpenGL color/depth buffer sizes and double buffering
   SDL_GL_SetAttribute(SDL_GL_RED_SIZE, 5);
   SDL_GL_SetAttribute(SDL_GL_GREEN_SIZE, 5);
   SDL_GL_SetAttribute(SDL_GL_BLUE_SIZE, 5);
   SDL_GL_SetAttribute(SDL_GL_DEPTH_SIZE, 16);
   SDL_GL_SetAttribute(SDL_GL_DOUBLEBUFFER, 1);
 
-  /*
-   * 5. Create a window with an OpenGL context
-   * In SDL2, SDL_SetVideoMode is replaced by SDL_CreateWindow +
-   * SDL_GL_CreateContext. The SDL_WINDOW_OPENGL flag is required for OpenGL
-   * rendering. Add SDL_WINDOW_FULLSCREEN for fullscreen mode if desired.
-   */
+  // 4. Create window with an OpenGL context
   SDL_Window *window =
-      SDL_CreateWindow("Simci",                   // Window title
-                       SDL_WINDOWPOS_CENTERED,    // X position
-                       SDL_WINDOWPOS_CENTERED,    // Y position
-                       SCREENWIDTH, SCREENHEIGHT, // Window size
-                       SDL_WINDOW_OPENGL          // Flags
-      );
-
+      SDL_CreateWindow("Simci",
+                       SDL_WINDOWPOS_CENTERED,
+                       SDL_WINDOWPOS_CENTERED,
+                       SCREENWIDTH, SCREENHEIGHT,
+                       SDL_WINDOW_OPENGL);
   if (!window) {
     fprintf(stderr, "Window creation failed: %s\n", SDL_GetError());
     quit_program(1);
   }
 
-  // 6. Create an OpenGL context for the window
   SDL_GLContext glcontext = SDL_GL_CreateContext(window);
   if (!glcontext) {
     fprintf(stderr, "OpenGL context creation failed: %s\n", SDL_GetError());
     quit_program(1);
   }
 
-  /*
-   * At this point:
-   * - SDL is initialized
-   * - A window is created
-   * - An OpenGL context is ready
-   */
-
-  /* Set up the SDL_TTF */
+  // 5. Initialize font rendering and OpenGL state
   init_text();
-
-  /*
-   * At this point, we should have a properly setup
-   * double-buffered window for use with OpenGL.
-   */
   setup_opengl(SCREENWIDTH, SCREENHEIGHT);
 
+  // 6. Create the city grid
   sim_city = new city(CITY_HEIGHT, CITY_WIDTH);
 
-  /*
-   * Now we want to begin our normal app process--
-   * an event loop with a lot of redrawing.
-   */
+  /* Main game loop */
   while (1) {
-    /*denboraren eta fps-en kontrola*/
+    /* Time and FPS counter update */
     update_fps();
-    /* Process incoming events. */
+    /* Process incoming events */
     process_events();
-    /*check button and key status and perform status updates accordingly*/
+    /* Move camera and update color overlay preview */
     update_status();
-    /* Draw the screen. */
+    /* Render the scene */
     draw_screen();
-    /* Draw text. */
+    /* Draw HUD text */
     write_text(fps_text_1, true);
     write_text(fps_text_2, false);
     /*
-     * Swap the buffers. This this tells the driver to
-     * render the next frame from the contents of the
-     * back-buffer, and to set all rendering operations
-     * to occur on what was the front-buffer.
-     *
-     * Double buffering prevents nasty visual tearing
-     * from the application drawing on areas of the
-     * screen that are being updated at the same time.
+     * Swap front and back buffers. Double buffering prevents visual tearing
+     * by always presenting a fully rendered frame.
      */
     SDL_GL_SwapWindow(window);
-    /* Wait until next update */
+    /* Cap to ~50 fps */
     SDL_Delay(SECOND / 50);
   }
 
-  /* Never reached. */
+  /* Never reached */
   return 0;
 }
