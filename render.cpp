@@ -16,6 +16,16 @@ uint ticks;
 uint frame;
 float speed;
 
+// Computed once after LoadFile — used every frame to position the model.
+// Non-uniform scaling so the footprint fills the full 1×1 cell in both
+// world X and world Z, with the height scaled by the average of the two.
+float model_sx = 1.0f; // scale for 3DS X axis  (→ world X)
+float model_sy = 1.0f; // scale for 3DS Y axis  (→ world Z after rotation)
+float model_sz = 1.0f; // scale for 3DS Z axis  (→ world Y / height)
+float model_cx = 0.0f; // 3DS-space X centre (for horizontal centering)
+float model_cy = 0.0f; // 3DS-space Y centre (for horizontal centering)
+float model_cz = 0.0f; // 3DS-space Z minimum (bottom sits on the ground)
+
 void setup_opengl(int width, int height) {
   float ratio = (float)width / (float)height;
 
@@ -41,70 +51,65 @@ void setup_opengl(int width, int height) {
   // Same FOV used in RetrieveObjectID — must stay in sync
   gluPerspective(45.0, ratio, 1.0f, 1024.0f);
 
-  //////////////////////////TESTING L3DS /////////////////////////////
-  /*
-    glMatrixMode(GL_MODELVIEW);
-    glLoadIdentity();
+  // Set up Light 0 for the 3DS model.
+  // GL_LIGHTING is toggled per-frame around the model draw only — terrain
+  // uses glColor4ubv (direct colors) which require lighting to be off.
+  GLfloat glfLightAmbient[]  = {0.2f, 0.2f, 0.2f, 1.0f};
+  GLfloat glfLightDiffuse[]  = {1.0f, 1.0f, 1.0f, 1.0f};
+  GLfloat glfLightSpecular[] = {0.6f, 0.6f, 0.3f, 1.0f};
+  glLightfv(GL_LIGHT0, GL_AMBIENT, glfLightAmbient);
+  glLightfv(GL_LIGHT0, GL_DIFFUSE, glfLightDiffuse);
+  glLightfv(GL_LIGHT0, GL_SPECULAR, glfLightSpecular);
+  glEnable(GL_LIGHT0);
 
-    GLfloat glfLightAmbient[] = {0.0, 0.0, 0.0, 1.0};
-    GLfloat glfLightDiffuse[] = {0.0, 1.0, 0.0, 1.0};
-    GLfloat glfLightSpecular[] = {0.6f, 0.6f, 0.3f, 1.0f};
-
-    glLightfv(GL_LIGHT0, GL_AMBIENT, glfLightAmbient);
-    glLightfv(GL_LIGHT0, GL_DIFFUSE, glfLightDiffuse);
-    glLightfv(GL_LIGHT0, GL_SPECULAR, glfLightSpecular);
-    glEnable(GL_LIGHT0);
-
-    glClearColor(0.5, 0.5, 0.5, 0.0);
-    glColor3f(1.0, 1.0, 1.0);
-    glEnable(GL_DEPTH_TEST);
-    glEnable(GL_CULL_FACE);
-    glCullFace(GL_FRONT_AND_BACK);
-    glEnable(GL_NORMALIZE);
-    glEnable(GL_LIGHTING);
-    glColor3f(0.5, 0, 0);
-
-    glEnableClientState(GL_VERTEX_ARRAY);
-    glEnableClientState(GL_NORMAL_ARRAY);
-    glEnableClientState(GL_COLOR_ARRAY);
-  */
-
-  // glViewport(0, 0, Width, Height);
-  // glMatrixMode(GL_PROJECTION);
-  // glLoadIdentity();
-  // gluPerspective(60, (GLfloat)Width/(GLfloat)Height, 4.0, 5000.0);
-  // glMatrixMode(GL_MODELVIEW);
-  // glLoadIdentity();
-
-  // GLfloat glfLightAmbient[] = {0.0, 0.0, 0.0, 1.0};
-  // GLfloat glfLightDiffuse[] = {0.0, 1.0, 0.0, 1.0};
-  // GLfloat glfLightSpecular[] = {0.6f, 0.6f, 0.3f, 1.0f};
-
-  // glLightfv(GL_LIGHT0, GL_AMBIENT, glfLightAmbient);
-  // glLightfv(GL_LIGHT0, GL_DIFFUSE, glfLightDiffuse);
-  // glLightfv(GL_LIGHT0, GL_SPECULAR, glfLightSpecular);
-  // glEnable(GL_LIGHT0);
-
-  // glClearColor(0.5, 0.5, 0.5, 0.0);
-  // glColor3f(1.0, 1.0, 1.0);
-  // glEnable(GL_DEPTH_TEST);
-  // glEnable(GL_CULL_FACE);
-  // glCullFace(GL_FRONT_AND_BACK);
-  // glEnable(GL_NORMALIZE);
-  // Without lighting, the house is black!
-  // glEnable(GL_LIGHTING);
-  // glColor3f(0.5, 0, 0);
-  // distance = -900;
-  // angle = 0;
-
-  // glEnableClientState(GL_VERTEX_ARRAY);
-  // glEnableClientState(GL_NORMAL_ARRAY);
-  // glEnableClientState(GL_COLOR_ARRAY);
-
-  if (!scene.LoadFile("3ds/house.3ds"))
+  if (!scene.LoadFile("3ds/house.3ds")) {
     printf("Can not load 3ds model\n");
-  else
+  } else {
     printf("3ds loaded correctly\n");
+
+    // Compute the axis-aligned bounding box over all meshes so we can
+    // scale and position the model at runtime without hard-coding values.
+    float minX = 1e30f, maxX = -1e30f;
+    float minY = 1e30f, maxY = -1e30f;
+    float minZ = 1e30f, maxZ = -1e30f;
+
+    for (uint m = 0; m < scene.GetMeshCount(); m++) {
+      LMesh &mesh = scene.GetMesh(m);
+      for (uint v = 0; v < mesh.GetVertexCount(); v++) {
+        const LVector4 &vert = mesh.GetVertex(v);
+        if (vert.x < minX)
+          minX = vert.x;
+        if (vert.x > maxX)
+          maxX = vert.x;
+        if (vert.y < minY)
+          minY = vert.y;
+        if (vert.y > maxY)
+          maxY = vert.y;
+        if (vert.z < minZ)
+          minZ = vert.z;
+        if (vert.z > maxZ)
+          maxZ = vert.z;
+      }
+    }
+
+    // After glRotatef(-90, X): 3DS-X → world-X, 3DS-Y → world-(-Z), 3DS-Z →
+    // world-Y. Scale each footprint axis independently so the model fills the
+    // full 1×1 cell. The vertical axis uses the average to keep proportions
+    // natural.
+    float extX = maxX - minX;
+    float extY = maxY - minY;
+    model_sx   = 1.0f / extX;
+    model_sy   = 1.0f / extY;
+    model_sz   = (model_sx + model_sy) * 0.5f; // natural height
+    model_cx   = (minX + maxX) * 0.5f;         // horizontal centre X
+    model_cy   = (minY + maxY) * 0.5f; // horizontal centre Y (→ world Z)
+    model_cz   = minZ;                 // bottom of model (→ world Y = 0)
+
+    printf("Model bbox  X[%.2f..%.2f] Y[%.2f..%.2f] Z[%.2f..%.2f]\n", minX,
+           maxX, minY, maxY, minZ, maxZ);
+    printf("Model sx=%.6f sy=%.6f sz=%.6f  centre (%.2f, %.2f)  bottom %.2f\n",
+           model_sx, model_sy, model_sz, model_cx, model_cy, model_cz);
+  }
 }
 
 // Given a clicked screen position (x, y), returns the GL name (ID) of the
@@ -299,50 +304,44 @@ void draw_screen() {
   }
   glEnd();
 
-  //////////////////////////TESTING L3DS /////////////////////////////
-  /*
+  // L3DS setup
 
-  // uint temp = SDL_GetTicks();
-  // frame = temp - ticks;
-  // ticks = temp;
-  // glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-  // glLoadIdentity();
-  // GLfloat glfLightPosition[] = {0.0, 0.0, 1.0, 0.0};
+  // Enable lighting only for the 3DS model; disable it afterwards so the
+  // terrain glColor4ubv calls work normally on the next frame.
+  glEnable(GL_NORMALIZE);
+  glEnable(GL_LIGHTING);
 
-  // glLightfv(GL_LIGHT0, GL_POSITION, glfLightPosition);
-
-  // udistance += speed * frame;
-  // glTranslatef(0, 0, udistance);
-  glRotatef(-90, 1.0, 0.0, 0.0);
-  // angle += frame * .01f;
-  // glRotatef(angle, 0.0, 1.0, 1.0);
-
-  // angle += 0.2f;
+  // Place the model at cell (0,0): centre of that cell is (0.5, h, 0.5).
+  // Transform order (OpenGL right-to-left):
+  //   1. Shift model so its bottom-centre is at the 3DS-space origin.
+  //   2. Scale uniformly so the footprint fits exactly one cell (1×1).
+  //   3. Rotate from 3DS Z-up to OpenGL Y-up.
+  //   4. Translate to the world-space centre of cell (0,0).
+  float cell_height = sim_city->map[0][0].height;
+  glPushMatrix();
+  glTranslatef(0.5f, cell_height, 0.5f);         // 4. cell (0,0) centre
+  glRotatef(-90.0f, 1.0f, 0.0f, 0.0f);           // 3. Z-up → Y-up
+  glScalef(model_sx, model_sy, model_sz);        // 2. fill cell footprint
+  glTranslatef(-model_cx, -model_cy, -model_cz); // 1. bottom to origin
 
   glEnableClientState(GL_VERTEX_ARRAY);
   glEnableClientState(GL_NORMAL_ARRAY);
-  glEnableClientState(GL_COLOR_ARRAY);
 
   for (uint i = 0; i < scene.GetMeshCount(); i++) {
     LMesh &mesh = scene.GetMesh(i);
-
-    // Vertex colors (RGB for each vertex)
-    GLfloat colors[] = {
-        1.0f, 0.0f, 0.0f, // Red
-        0.0f, 1.0f, 0.0f, // Green
-        0.0f, 0.0f, 1.0f  // Blue
-    };
-
     glVertexPointer(4, GL_FLOAT, 0, &mesh.GetVertex(0));
     glNormalPointer(GL_FLOAT, 0, &mesh.GetNormal(0));
-    glColor3f(0.5, 0, 0);
-    glColorPointer(3, GL_FLOAT, 0, &mesh.GetBinormal(0));
-    // glColorPointer(3, GL_FLOAT, 0, colors);
+    glColor3f(0.6f, 0.4f, 0.2f); // base material color, shaded by GL_LIGHT0
     glDrawElements(GL_TRIANGLES, mesh.GetTriangleCount() * 3, GL_UNSIGNED_SHORT,
                    &mesh.GetTriangle(0));
   }
-*/
-  //////////////////////////END TESTING L3DS////////////////////////////
+
+  glDisableClientState(GL_VERTEX_ARRAY);
+  glDisableClientState(GL_NORMAL_ARRAY);
+  glPopMatrix();
+
+  glDisable(GL_LIGHTING);
+  glDisable(GL_NORMALIZE);
 }
 
 // Simplified scene used only by RetrieveObjectID for hit-testing.
